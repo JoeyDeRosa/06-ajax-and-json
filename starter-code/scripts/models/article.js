@@ -46,23 +46,43 @@ Article.fetchAll = function() {
     /* When our data is already in localStorage:
     1. We can process and load it,
     2. Then we can render the index page.  */
-    var data = jQuery.parseJSON(localStorage.blogArticles);
-    Article.loadAll(data);
-    Article.toHtml();
-  } else {
+    $.ajax({
+      type: 'HEAD',
+      url: 'data/blogArticles.json',
+      complete: function(xhr) {
+        if(localStorage.eTag === xhr.getResponseHeader('ETag')){
+          var data = JSON.parse(localStorage.blogArticles);
+          Article.loadAll(data);
+          articleView.renderIndexPage();
+          console.log('yahahha');
+        }else{
+          $.getJSON('data/blogArticles.json', function(data, msg, xhr) {
+            Article.loadAll(data);
+            localStorage.blogArticles = JSON.stringify(data);
+            localStorage.eTag = xhr.getResponseHeader('ETag');
+            articleView.renderIndexPage();
+          });
+        }
+      }
+    });
+  }else {
     /* Without our localStorage in memory, we need to:
     1. Retrieve our JSON file with $.getJSON
       1.a Load our json data
       1.b Store that data in localStorage so that we can skip the server call next time,
       1.c And then render the index page.*/
-    $.getJSON('data/blogArticles.json').done(function(data) {
-      localStorage.blogArticles = JSON.stringify(data);
+    $.getJSON('data/blogArticles.json', function(data, msg, xhr) {
+
       Article.loadAll(data);
-      Article.toHtml();
+      localStorage.blogArticles = JSON.stringify(data);
+
+      console.log(xhr.getResponseHeader('ETag'));
+      localStorage.eTag = xhr.getResponseHeader('ETag');
+      articleView.renderIndexPage();
+
     });
   }
 };
-Article.fetchAll();
 
 /* Great work so far! STRETCH GOAL TIME!? Our main goal in this part of the
    lab will be saving the eTag located in Headers, to see if it's been updated:
